@@ -1,0 +1,16 @@
+snowflake:
+  database: FINANCE_DW
+  schema: REPORTING
+  warehouse: ANALYTICS_WH
+
+refresh:
+  schedule_utc: "05:30"
+  powerbi_refresh_utc: "06:30"
+
+thresholds:
+  row_count_deviation_pct: 10
+  max_null_rate_pct: 0.5
+  revenue_reconciliation_tolerance_pct: 0.1
+  max_stale_hours: 18
+  opex_variance_amber_pct: 2
+  opex_variance_red_pct: 5
