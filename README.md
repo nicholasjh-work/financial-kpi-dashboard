@@ -1,5 +1,7 @@
 # Executive Financial KPI Dashboard
 
+**[Live Demo](https://nicholasjh-work.github.io/financial-kpi-dashboard/)**
+
 Board-quality P&L, margin, and OPEX dashboard built on Snowflake and Power BI. Covers revenue, gross margin, operating expenses, and variance analysis with a standardized taxonomy (rate, volume, mix, FX, returns). Refreshes from Snowflake and Databricks on a near real-time schedule.
 
 Reduced manual report prep by 30% and cut executive decision turnaround by 25% for monthly and quarterly reviews. Includes a governed KPI dictionary so every metric means the same thing across divisions.
