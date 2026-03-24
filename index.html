@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Executive Financial KPI Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f8f9fa;--card:#fff;--border:#e2e8f0;--text:#1a202c;--muted:#64748b;--blue:#2563eb;--green:#16a34a;--amber:#d97706;--red:#dc2626;--teal:#0d9488;--purple:#7c3aed}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px;max-width:1400px;margin:0 auto}
+h1{font-size:22px;font-weight:600;margin-bottom:4px}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:20px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;border-left:4px solid var(--blue)}
+.kpi.green{border-left-color:var(--green)}
+.kpi.amber{border-left-color:var(--amber)}
+.kpi.red{border-left-color:var(--red)}
+.kpi-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.kpi-value{font-size:28px;font-weight:700}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:12px}
+.chart-wrap{position:relative;height:280px}
+.section-title{font-size:16px;font-weight:600;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--blue)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+td{padding:8px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-amber{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#991b1b}
+.filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.filters select{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--card)}
+@media(max-width:900px){.kpi-row,.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>Executive Financial KPI Dashboard</h1>
+<p class="subtitle">P&L, margin, and OPEX variance with standardized taxonomy (rate, volume, mix, FX, returns). Snowflake + Power BI. Synthetic data.</p>
+
+<div class="filters">
+<select id="filterDiv" onchange="updateDashboard()">
+<option value="all">All Divisions</option>
+<option value="North America">North America</option>
+<option value="EMEA">EMEA</option>
+<option value="APAC">APAC</option>
+</select>
+<select id="filterYear" onchange="updateDashboard()">
+<option value="all">All Periods</option>
+<option value="FY2024">FY2024</option>
+<option value="FY2025">FY2025</option>
+</select>
+</div>
+
+<div class="kpi-row">
+<div class="kpi"><div class="kpi-label">Net Revenue YTD</div><div class="kpi-value" style="color:var(--blue)">$48.2M</div><div class="kpi-sub">+12.3% vs prior year</div></div>
+<div class="kpi green"><div class="kpi-label">Gross Margin</div><div class="kpi-value" style="color:var(--green)">38.4%</div><div class="kpi-sub">+1.2pp vs prior year</div></div>
+<div class="kpi amber"><div class="kpi-label">OPEX Variance</div><div class="kpi-value" style="color:var(--amber)">+$1.8M</div><div class="kpi-sub">3.2% over budget</div></div>
+<div class="kpi red"><div class="kpi-label">Revenue R12M</div><div class="kpi-value" style="color:var(--teal)">$52.7M</div><div class="kpi-sub">Rolling 12-month total</div></div>
+</div>
+
+<div class="section-title">Revenue Trends</div>
+<div class="grid-2">
+<div class="card"><div class="card-title">Monthly net revenue: current year vs prior year</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
+<div class="card"><div class="card-title">Revenue by division</div><div class="chart-wrap"><canvas id="chartDivision"></canvas></div></div>
+</div>
+
+<div class="section-title">Margin Analysis</div>
+<div class="grid-2">
+<div class="card"><div class="card-title">Gross margin % by division (trailing 12 months)</div><div class="chart-wrap"><canvas id="chartMargin"></canvas></div></div>
+<div class="card"><div class="card-title">Variance bridge: revenue change decomposition</div><div class="chart-wrap"><canvas id="chartBridge"></canvas></div></div>
+</div>
+
+<div class="section-title">OPEX Tracking</div>
+<div class="grid-2">
+<div class="card"><div class="card-title">OPEX actual vs budget by department</div><div class="chart-wrap"><canvas id="chartOpex"></canvas></div></div>
+<div class="card">
+<div class="card-title">Top cost centers by variance</div>
+<table>
+<thead><tr><th>Cost Center</th><th>Actual</th><th>Budget</th><th>Variance</th><th>Var %</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Engineering</td><td>$3.12M</td><td>$2.85M</td><td>+$270K</td><td>9.5%</td><td><span class="badge badge-red">Over</span></td></tr>
+<tr><td>Marketing</td><td>$1.84M</td><td>$1.70M</td><td>+$140K</td><td>8.2%</td><td><span class="badge badge-red">Over</span></td></tr>
+<tr><td>Consulting</td><td>$960K</td><td>$880K</td><td>+$80K</td><td>4.1%</td><td><span class="badge badge-amber">Watch</span></td></tr>
+<tr><td>Sales - East</td><td>$2.45M</td><td>$2.40M</td><td>+$50K</td><td>2.1%</td><td><span class="badge badge-amber">Watch</span></td></tr>
+<tr><td>Manufacturing</td><td>$4.10M</td><td>$4.25M</td><td>-$150K</td><td>-3.5%</td><td><span class="badge badge-green">Under</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="section-title">Governed KPI Definitions</div>
+<div class="card">
+<table>
+<thead><tr><th>KPI</th><th>Formula</th><th>Grain</th><th>Date Basis</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td><strong>Net Revenue</strong></td><td>SUM(gross + returns + adjustments)</td><td>Transaction</td><td>Invoice date</td><td>FP&A</td></tr>
+<tr><td><strong>Gross Margin %</strong></td><td>(net_revenue - cogs) / net_revenue</td><td>Division, month</td><td>Invoice date</td><td>FP&A</td></tr>
+<tr><td><strong>OPEX Variance</strong></td><td>SUM(actual) - SUM(budget)</td><td>Cost center, month</td><td>Accounting period</td><td>Controller</td></tr>
+<tr><td><strong>OPEX Variance %</strong></td><td>variance / budget</td><td>Cost center, month</td><td>Accounting period</td><td>Controller</td></tr>
+<tr><td><strong>Rate Effect</strong></td><td>(price_curr - price_prior) * units_prior</td><td>Division, product, month</td><td>Invoice date</td><td>FP&A</td></tr>
+<tr><td><strong>Volume Effect</strong></td><td>(units_curr - units_prior) * price_prior</td><td>Division, product, month</td><td>Invoice date</td><td>FP&A</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="margin-top:24px;font-size:11px;color:var(--muted)">All data are synthetic. Governed KPI definitions in docs/kpi_dictionary.md. Source: github.com/nicholasjh-work/financial-kpi-dashboard</p>
+
+<script>
+const MONTHS = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+const REV_CY = [3.8,4.1,3.9,4.5,4.2,5.1,4.8,4.3,4.9,4.6,4.4,5.2];
+const REV_PY = [3.5,3.7,3.6,4.0,3.8,4.5,4.2,3.9,4.4,4.1,3.9,4.7];
+
+// Revenue trend
+new Chart(document.getElementById('chartRevenue').getContext('2d'), {
+    type:'bar',
+    data:{
+        labels:MONTHS,
+        datasets:[
+            {label:'FY2025',data:REV_CY,backgroundColor:'rgba(37,99,235,0.7)',borderRadius:4},
+            {label:'FY2024',data:REV_PY,backgroundColor:'rgba(148,163,184,0.4)',borderRadius:4},
+        ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{title:{display:true,text:'Revenue ($M)',font:{size:11}}}}}
+});
+
+// Division breakdown
+new Chart(document.getElementById('chartDivision').getContext('2d'), {
+    type:'bar',
+    data:{
+        labels:['North America','EMEA','APAC','LATAM'],
+        datasets:[{label:'Revenue ($M)',data:[22.1,14.3,8.6,3.2],backgroundColor:['#2563eb','#0d9488','#d97706','#7c3aed'],borderRadius:6}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Revenue ($M)',font:{size:11}}}}}
+});
+
+// Margin by division
+new Chart(document.getElementById('chartMargin').getContext('2d'), {
+    type:'line',
+    data:{
+        labels:MONTHS,
+        datasets:[
+            {label:'North America',data:[39.2,38.8,39.5,40.1,39.7,38.4,39.0,38.6,39.8,40.2,39.4,38.9],borderColor:'#2563eb',tension:0.3,pointRadius:3,borderWidth:2},
+            {label:'EMEA',data:[36.5,37.1,36.8,37.4,36.9,35.8,36.2,37.0,37.5,36.8,37.2,36.5],borderColor:'#0d9488',tension:0.3,pointRadius:3,borderWidth:2},
+            {label:'APAC',data:[34.1,34.8,33.9,35.2,34.5,33.2,34.0,34.6,35.1,34.3,34.8,33.7],borderColor:'#d97706',tension:0.3,pointRadius:3,borderWidth:2},
+        ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{min:30,max:42,title:{display:true,text:'Gross Margin %',font:{size:11}}}}}
+});
+
+// Variance bridge (waterfall)
+const bridgeLabels = ['PY Revenue','Rate','Volume','Mix','FX','Returns','CY Revenue'];
+const bridgeData = [42.3,2.8,3.1,-0.5,-0.8,-0.3,48.2];
+const bridgeColors = bridgeData.map((v,i) => {
+    if(i===0||i===bridgeLabels.length-1) return '#94a3b8';
+    return v >= 0 ? '#16a34a' : '#dc2626';
+});
+new Chart(document.getElementById('chartBridge').getContext('2d'), {
+    type:'bar',
+    data:{
+        labels:bridgeLabels,
+        datasets:[{label:'Impact ($M)',data:bridgeData.map(Math.abs),backgroundColor:bridgeColors,borderRadius:4}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const v=bridgeData[ctx.dataIndex];return (v>=0?'+':'')+v+'M'}}}},scales:{y:{title:{display:true,text:'Revenue ($M)',font:{size:11}}}}}
+});
+
+// OPEX actual vs budget
+const depts = ['Engineering','Sales','Manufacturing','Marketing','Support'];
+const opexActual = [3.12,2.45,4.10,1.84,1.20];
+const opexBudget = [2.85,2.40,4.25,1.70,1.15];
+new Chart(document.getElementById('chartOpex').getContext('2d'), {
+    type:'bar',
+    data:{
+        labels:depts,
+        datasets:[
+            {label:'Actual',data:opexActual,backgroundColor:'rgba(37,99,235,0.7)',borderRadius:4},
+            {label:'Budget',data:opexBudget,backgroundColor:'rgba(148,163,184,0.4)',borderRadius:4},
+        ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{y:{title:{display:true,text:'OPEX ($M)',font:{size:11}}}}}
+});
+
+function updateDashboard() {
+    // Filter controls are visual only in this demo
+}
+</script>
+</body>
+</html>
